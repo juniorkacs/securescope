@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Assets{% endblock %}
+{% block content %}
+<div class="page-head spread">
+  <div>
+    <h1 class="display">Asset inventory</h1>
+    <p>Criticality (1 to 5), data classification and internet exposure feed directly into every finding's risk score. Changing them here re-ranks findings immediately.</p>
+  </div>
+</div>
+
+{{ m.errors_box(errors) }}
+
+{% if can(user, "admin") %}
+<details class="panel mb" {% if show_form %}open{% endif %}>
+  <summary class="btn ghost small">Add an asset</summary>
+  <div class="body">
+    <form method="post" action="/assets" class="form-grid">
+      {{ m.csrf_field() }}
+      <div><label class="field" for="a-id">ID</label><input id="a-id" name="id" type="text" placeholder="AST-017" value="{{ form.get('id', '') }}" required></div>
+      <div><label class="field" for="a-name">Name</label><input id="a-name" name="name" type="text" value="{{ form.get('name', '') }}" required></div>
+      <div><label class="field" for="a-type">Type</label><select id="a-type" name="type">{% for t in types %}<option value="{{ t.value }}" {% if form.get('type') == t.value %}selected{% endif %}>{{ t.value }}</option>{% endfor %}</select></div>
+      <div><label class="field" for="a-env">Environment</label><input id="a-env" name="environment" type="text" placeholder="production" value="{{ form.get('environment', '') }}" required></div>
+      <div><label class="field" for="a-owner">Owner</label><input id="a-owner" name="owner" type="text" value="{{ form.get('owner', '') }}" required></div>
+      <div><label class="field" for="a-crit">Criticality (1 to 5)</label><input id="a-crit" name="criticality" type="number" min="1" max="5" value="{{ form.get('criticality', '3') }}" required></div>
+      <div><label class="field" for="a-class">Data classification</label><select id="a-class" name="data_class">{% for c in classes %}<option value="{{ c.value }}">{{ c.value }}</option>{% endfor %}</select></div>
+      <div class="check"><input id="a-inet" name="internet_facing" type="checkbox"><label for="a-inet">Internet-facing</label></div>
+      <div class="wide"><button class="btn primary" type="submit">Add asset</button></div>
+    </form>
+  </div>
+</details>
+{% else %}
+<p class="notice mb">You can view the inventory. Only admins can add assets or change criticality.</p>
+{% endif %}
+
+<div class="table-wrap" tabindex="0" role="region" aria-label="Table (scrolls sideways on small screens)">
+  <table>
+    <caption class="sr-only">Assets</caption>
+    <thead><tr>
+      <th scope="col">Asset</th><th scope="col">Type</th><th scope="col">Owner</th>
+      <th scope="col">Criticality</th><th scope="col">Data</th><th scope="col">Internet</th>
+      <th scope="col" class="right">Open</th><th scope="col">Highest risk</th>
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}{% set a = r.asset %}
+      <tr id="{{ a.id }}">
+        <td><span class="cond">{{ a.id }}</span> {{ a.name }}<br><span class="xs muted">{{ a.environment }}</span></td>
+        <td class="muted">{{ a.type.value }}</td>
+        {% if can(user, "admin") %}
+        <td colspan="4">
+          <form method="post" action="/assets/{{ a.id }}" class="row">
+            {{ m.csrf_field() }}
+            <label class="sr-only" for="o-{{ a.id }}">Owner of {{ a.id }}</label>
+            <input id="o-{{ a.id }}" name="owner" type="text" value="{{ a.owner }}" class="xs">
+            <label class="sr-only" for="c-{{ a.id }}">Criticality of {{ a.id }}</label>
+            <select id="c-{{ a.id }}" name="criticality">{% for i in range(1, 6) %}<option {% if i == a.criticality %}selected{% endif %}>{{ i }}</option>{% endfor %}</select>
+            <label class="sr-only" for="d-{{ a.id }}">Data classification of {{ a.id }}</label>
+            <select id="d-{{ a.id }}" name="data_class">{% for c in classes %}<option value="{{ c.value }}" {% if c == a.data_class %}selected{% endif %}>{{ c.value }}</option>{% endfor %}</select>
+            <span class="check"><input id="i-{{ a.id }}" name="internet_facing" type="checkbox" {% if a.internet_facing %}checked{% endif %}><label for="i-{{ a.id }}" class="xs">internet</label></span>
+            <button class="btn small" type="submit">Save</button>
+          </form>
+        </td>
+        {% else %}
+        <td class="muted">{{ a.owner }}</td>
+        <td class="num">{{ a.criticality }}</td>
+        <td class="muted">{{ a.data_class.value }}</td>
+        <td>{{ "yes" if a.internet_facing else "no" }}</td>
+        {% endif %}
+        <td class="right num"><a href="/findings?asset={{ a.id }}">{{ r.open }}</a>{% if r.overdue %} <span class="tag bad">{{ r.overdue }} overdue</span>{% endif %}</td>
+        <td>{% if r.top %}<span class="score">{{ r.top.score }}</span> {{ m.rating_tag(r.top.rating) }}{% else %}<span class="muted">none open</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

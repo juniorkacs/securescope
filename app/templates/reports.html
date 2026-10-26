@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="display">Reports</h1>
+  <p>Every report is generated from the current data when you open it.</p>
+</div>
+<div class="grid-2">
+  <section class="panel">
+    <header><h2>Executive security report</h2></header>
+    <div class="body stack">
+      <p class="small">A one-page summary for leadership: key points, open risk by rating, the ten highest-risk findings, control verification status, and limitations.</p>
+      <p class="row"><a class="btn primary" href="/reports/executive">View report</a><a class="btn" href="/reports/executive.pdf">Download PDF</a></p>
+    </div>
+  </section>
+  <section class="panel">
+    <header><h2>Data exports</h2></header>
+    <div class="body stack">
+      <p class="small">CSV files for spreadsheets or other tools. Cells that start with formula characters are escaped.</p>
+      <p class="row"><a class="btn" href="/reports/findings.csv">Findings (CSV)</a><a class="btn" href="/reports/controls.csv">Controls (CSV)</a></p>
+      <p class="xs muted">Developers can also read <code>/api/summary</code> and <code>/api/findings</code> as JSON while signed in.</p>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+# Render Blueprint: free public demo. Render generates the session secret.
+services:
+  - type: web
+    name: securescope
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: SECURESCOPE_SECRET_KEY
+        generateValue: true
+      - key: SECURESCOPE_DEMO_MODE
+        value: "true"
+      - key: SECURESCOPE_DATABASE_URL
+        value: sqlite:////tmp/securescope.db

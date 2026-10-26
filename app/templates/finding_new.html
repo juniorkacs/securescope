@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Record a finding{% endblock %}
+{% block content %}
+<p class="small muted"><a href="/findings">Findings</a> / New</p>
+<div class="page-head">
+  <h1 class="display">Record a finding</h1>
+  <p>The risk score, rating and due date are calculated from what you enter here and the asset's criticality, exposure and data classification.</p>
+</div>
+{{ m.errors_box(errors) }}
+<section class="panel">
+  <div class="body">
+    <form method="post" action="/findings" class="form-grid">
+      {{ m.csrf_field() }}
+      <div class="wide"><label class="field" for="n-title">Title</label><input id="n-title" name="title" type="text" required value="{{ form.get('title', '') }}"></div>
+      <div><label class="field" for="n-asset">Asset</label>
+        <select id="n-asset" name="asset_id" required>{% for a in assets %}<option value="{{ a.id }}" {% if form.get('asset_id') == a.id %}selected{% endif %}>{{ a.id }} {{ a.name }}</option>{% endfor %}</select></div>
+      <div><label class="field" for="n-cvss">CVSS base score (0 to 10)</label><input id="n-cvss" name="cvss" type="number" min="0" max="10" step="0.1" required value="{{ form.get('cvss', '') }}"></div>
+      <div><label class="field" for="n-cwe">CWE (optional)</label><input id="n-cwe" name="cwe" type="text" placeholder="CWE-79" value="{{ form.get('cwe', '') or '' }}"></div>
+      <div><label class="field" for="n-source">Source</label><input id="n-source" name="source" type="text" placeholder="Vulnerability scan" required value="{{ form.get('source', '') }}"></div>
+      <div><label class="field" for="n-disc">Discovered</label><input id="n-disc" name="discovered" type="date" required value="{{ form.get('discovered', '') }}"></div>
+      <div><label class="field" for="n-owner">Owner</label><input id="n-owner" name="owner" type="text" value="{{ form.get('owner', '') }}"></div>
+      <div class="check"><input id="n-kev" name="known_exploited" type="checkbox" {% if form.get('known_exploited') %}checked{% endif %}><label for="n-kev">Known to be exploited</label></div>
+      <div class="wide"><label class="field" for="n-controls">Related controls (hold Ctrl or Cmd to pick several)</label>
+        <select id="n-controls" name="control_ids" multiple size="6">
+          {% for cid, title in catalog.items() %}<option value="{{ cid }}" {% if cid in form.get('control_ids', []) %}selected{% endif %}>{{ cid }} {{ title }}</option>{% endfor %}
+        </select></div>
+      <div class="wide"><label class="field" for="n-desc">Description</label><textarea id="n-desc" name="description" rows="3">{{ form.get('description', '') }}</textarea></div>
+      <div class="wide"><button class="btn primary" type="submit">Record finding</button></div>
+    </form>
+  </div>
+</section>
+{% endblock %}

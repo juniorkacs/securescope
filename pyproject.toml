@@ -1,0 +1,66 @@
+[project]
+name = "securescope"
+version = "1.0.0"
+description = "Security posture and NIST SP 800-53 control assessment dashboard (synthetic data demo)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "jinja2>=3.1",
+  "sqlalchemy>=2.0",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "argon2-cffi>=23.1",
+  "itsdangerous>=2.2",
+  "python-multipart>=0.0.9",
+  "reportlab>=4.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=5", "httpx>=0.27", "ruff>=0.6", "mypy>=1.10", "bandit>=1.7", "pip-audit>=2.7"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["templates/*.html", "static/*", "static/fonts/*"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]
+ignore = ["S101"]  # assert is fine in tests
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]  # test passwords
+"app/seed.py" = ["S311", "E501"]  # random is for synthetic data; long data rows
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["tests/"]
+
+[[tool.mypy.overrides]]
+module = ["reportlab.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/__main__.py"]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B311"]  # random used only to generate synthetic demo data

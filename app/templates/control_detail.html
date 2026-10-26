@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ c.control_id }}{% endblock %}
+{% block content %}
+{% set a = c.assessment %}
+<p class="small muted"><a href="/controls">Controls</a> / {{ c.control_id }}</p>
+<div class="page-head">
+  <h1 class="display">{{ c.control_id }} {{ c.title }}</h1>
+  <p class="row mt-s">{{ m.verification_tag(c.state.verification) }} <span class="muted small">{{ c.family }}</span></p>
+</div>
+{{ m.errors_box(errors) }}
+
+<div class="grid-2">
+  <section class="panel">
+    <header><h2>Current state</h2></header>
+    <div class="body stack">
+      <p>{{ c.state.explanation }}</p>
+      {% if c.conflict %}
+      <p class="notice">This control was assessed as satisfied, but {{ c.open_findings | length }} open finding{{ "s" if c.open_findings | length != 1 }} with a high or critical rating point at it. The assessment may no longer reflect reality.</p>
+      {% endif %}
+      <dl class="legend">
+        <div><dt class="muted">Implementation</dt><dd>{{ a.implementation.value if a else "not recorded" }}</dd></div>
+        <div><dt class="muted">Assessment result</dt><dd>{{ a.result.value if a else "not assessed" }}</dd></div>
+        <div><dt class="muted">Assessed on</dt><dd>{{ (a.assessed_on | date) if a and a.assessed_on else "never" }}</dd></div>
+        <div><dt class="muted">Assessor</dt><dd>{{ a.assessor if a and a.assessor else "none" }}</dd></div>
+        <div><dt class="muted">Control owner</dt><dd>{{ a.owner if a and a.owner else "unassigned" }}</dd></div>
+      </dl>
+      {% if a and a.evidence %}<p class="small"><span class="muted">Evidence:</span> {{ a.evidence }}</p>{% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <header><h2>Record an assessment</h2></header>
+    <div class="body">
+      {% if can(user, "analyst") %}
+      <form method="post" action="/controls/{{ c.control_id }}" class="form-grid">
+        {{ m.csrf_field() }}
+        <div><label class="field" for="c-impl">Implementation (claimed)</label>
+          <select id="c-impl" name="implementation">{% for s in impl %}<option value="{{ s.value }}" {% if a and a.implementation == s %}selected{% endif %}>{{ s.value }}</option>{% endfor %}</select></div>
+        <div><label class="field" for="c-result">Assessment result</label>
+          <select id="c-result" name="result">{% for s in results %}<option value="{{ s.value }}" {% if a and a.result == s %}selected{% endif %}>{{ s.value }}</option>{% endfor %}</select></div>
+        <div><label class="field" for="c-date">Assessed on</label><input id="c-date" name="assessed_on" type="date" value="{{ a.assessed_on.isoformat() if a and a.assessed_on else '' }}"></div>
+        <div><label class="field" for="c-assessor">Assessor</label><input id="c-assessor" name="assessor" type="text" value="{{ a.assessor if a else '' }}"></div>
+        <div><label class="field" for="c-owner">Control owner</label><input id="c-owner" name="owner" type="text" value="{{ a.owner if a else '' }}"></div>
+        <div class="wide"><label class="field" for="c-evidence">Evidence</label><textarea id="c-evidence" name="evidence" rows="3">{{ a.evidence if a else '' }}</textarea></div>
+        <div class="wide"><button class="btn primary" type="submit">Save assessment</button></div>
+      </form>
+      {% else %}
+      <p class="small muted">Analysts and admins can record assessments.</p>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+<section class="panel mt" id="findings">
+  <header><h2>Open findings mapped to {{ c.control_id }}</h2></header>
+  <div class="body">
+    {% if c.open_findings %}
+    <ul class="asset-bars">
+      {% for v in c.open_findings %}
+      <li><span class="score">{{ v.risk.score }}</span> {{ m.rating_tag(v.risk.rating) }} <a href="/findings/{{ v.finding.id }}">{{ v.finding.id }} {{ v.finding.title }}</a> <span class="muted small">on {{ v.asset.name }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="small muted">No open findings reference this control.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

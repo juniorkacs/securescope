@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% set f = v.finding %}
+{% block title %}{{ f.id }}{% endblock %}
+{% block content %}
+<p class="small muted"><a href="/findings">Findings</a> / {{ f.id }}</p>
+<div class="page-head">
+  <h1 class="display">{{ f.title }}</h1>
+  <p class="row mt-s">
+    <span class="score">{{ v.risk.score }}</span> {{ m.rating_tag(v.risk.rating) }} {{ m.status_tag(f.status) }}
+    {% if f.known_exploited %}<span class="tag bad">known exploited</span>{% endif %}
+    {% if v.overdue %}<span class="tag bad">overdue</span>{% endif %}
+    <span class="muted small">{{ f.id }} on <a href="/findings?asset={{ v.asset.id }}">{{ v.asset.name }}</a></span>
+  </p>
+</div>
+
+{{ m.errors_box(errors) }}
+
+<div class="grid-2">
+  <section class="panel">
+    <header><h2>Why it scores {{ v.risk.score }}</h2><a class="small" href="/methodology">Scoring rules</a></header>
+    <div class="body">
+      <table class="breakdown">
+        <caption class="sr-only">Risk score breakdown</caption>
+        <tbody>
+        {% for factor, pts in v.risk.breakdown %}
+          <tr><td>{{ factor }}</td><td class="right num">+{{ pts }}</td></tr>
+        {% endfor %}
+          <tr class="total"><td>Total{% if v.risk.breakdown | map(attribute=1) | sum > 100 %} (capped at 100){% endif %}</td><td class="right num">{{ v.risk.score }}</td></tr>
+        </tbody>
+      </table>
+      <p class="small muted mt-s">Rated {{ v.risk.rating.value }}, so the remediation target is {{ sla[v.risk.rating] }} days from discovery.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <header><h2>Details</h2></header>
+    <div class="body">
+      <dl class="legend">
+        <div><dt class="muted">CVSS base score</dt><dd class="num">{{ "%.1f" | format(f.cvss) }}</dd></div>
+        <div><dt class="muted">Weakness</dt><dd>{{ f.cwe or "not classified" }}</dd></div>
+        <div><dt class="muted">Source</dt><dd>{{ f.source }}</dd></div>
+        <div><dt class="muted">Discovered</dt><dd>{{ f.discovered | date }}</dd></div>
+        <div><dt class="muted">Asset criticality</dt><dd class="num">{{ v.asset.criticality }} of 5</dd></div>
+        <div><dt class="muted">Data</dt><dd>{{ v.asset.data_class.value }}</dd></div>
+        <div><dt class="muted">Days open</dt><dd class="num">{{ v.days_open }}</dd></div>
+        <div><dt class="muted">Closed</dt><dd>{{ f.closed | date or "not closed" }}</dd></div>
+      </dl>
+      <p class="small mt">{{ f.description }}</p>
+      <p class="small mt-s">Evidence against controls:
+        {% for c in f.control_ids %}<a href="/controls/{{ c }}">{{ c }} {{ catalog[c] }}</a>{{ "; " if not loop.last }}{% endfor %}</p>
+    </div>
+  </section>
+</div>
+
+<div class="grid-2 mt">
+  <section class="panel">
+    <header><h2>Remediation</h2></header>
+    <div class="body">
+      {% if can(user, "analyst") %}
+      <form method="post" action="/findings/{{ f.id }}" class="form-grid">
+        {{ m.csrf_field() }}
+        <div><label class="field" for="u-status">Status</label>
+          <select id="u-status" name="status">{% for st in statuses %}<option value="{{ st.value }}" {% if st == f.status %}selected{% endif %}>{{ st.value }}</option>{% endfor %}</select></div>
+        <div><label class="field" for="u-owner">Owner</label><input id="u-owner" name="owner" type="text" value="{{ f.owner }}"></div>
+        <div><label class="field" for="u-due">Due date</label><input id="u-due" name="due" type="date" value="{{ f.due.isoformat() if f.due else '' }}"></div>
+        <div class="wide"><label class="field" for="u-note">Note (required when accepting risk)</label><textarea id="u-note" name="note" rows="2"></textarea></div>
+        <div class="wide"><button class="btn primary" type="submit">Save remediation update</button></div>
+      </form>
+      {% else %}
+      <p class="small muted">Owner: {{ f.owner or "unassigned" }}. Due {{ f.due | date }}. Analysts and admins can update remediation.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <header><h2>History</h2></header>
+    <div class="body">
+      <ol class="timeline">
+        {% for e in f.history %}
+        <li><p>{{ e.summary }}</p><p class="xs muted">{{ e.at.strftime("%d %b %Y %H:%M") }}, {{ e.actor }}</p></li>
+        {% endfor %}
+      </ol>
+    </div>
+  </section>
+</div>
+{% endblock %}

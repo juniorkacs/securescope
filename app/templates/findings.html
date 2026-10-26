@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Findings{% endblock %}
+{% block content %}
+<div class="page-head spread">
+  <div>
+    <h1 class="display">Vulnerability register</h1>
+    <p>Synthetic findings, ranked by risk score. Select one to see how its score was calculated and to update remediation.</p>
+  </div>
+  {% if can(user, "analyst") %}<a class="btn primary" href="/findings/new">Record a finding</a>{% endif %}
+</div>
+
+<form class="filters" method="get" action="/findings"
+      hx-get="/findings" hx-target="#findings-table" hx-trigger="input changed delay:250ms from:input[type=search], change" hx-push-url="true">
+  <div><label class="field" for="f-q">Search</label><input id="f-q" type="search" name="q" value="{{ q }}" placeholder="ID, title, asset or CWE"></div>
+  <div><label class="field" for="f-rating">Rating</label>
+    <select id="f-rating" name="rating"><option value="">All ratings</option>{% for r in ratings %}<option value="{{ r.value }}" {% if rating == r.value %}selected{% endif %}>{{ r.value }}</option>{% endfor %}</select></div>
+  <div><label class="field" for="f-status">Status</label>
+    <select id="f-status" name="status">
+      <option value="active" {% if status == "active" %}selected{% endif %}>Open or in progress</option>
+      <option value="" {% if status == "" %}selected{% endif %}>Any status</option>
+      {% for st in statuses %}<option value="{{ st.value }}" {% if status == st.value %}selected{% endif %}>{{ st.value }}</option>{% endfor %}
+    </select></div>
+  <div><label class="field" for="f-asset">Asset</label>
+    <select id="f-asset" name="asset"><option value="">All assets</option>{% for a in assets %}<option value="{{ a.id }}" {% if asset == a.id %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+  <div class="check"><input id="f-overdue" type="checkbox" name="overdue" value="true" {% if overdue %}checked{% endif %}><label for="f-overdue">Overdue only</label></div>
+  <noscript><button class="btn" type="submit">Apply filters</button></noscript>
+</form>
+
+<div id="findings-table" aria-live="polite">
+  {% include "partials/findings_table.html" %}
+</div>
+{% endblock %}

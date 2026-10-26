@@ -1,0 +1,28 @@
+{% import "_macros.html" as m with context %}
+<p class="small muted mb">{{ views | length }} finding{{ "" if views | length == 1 else "s" }}. <a href="/reports/findings.csv">Export all as CSV</a></p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Table (scrolls sideways on small screens)">
+  <table>
+    <caption class="sr-only">Findings</caption>
+    <thead><tr>
+      <th scope="col">Risk</th><th scope="col">Finding</th><th scope="col">Asset</th><th scope="col" class="right">CVSS</th>
+      <th scope="col">Status</th><th scope="col">Owner</th><th scope="col">Due</th>
+    </tr></thead>
+    <tbody>
+    {% for v in views %}{% set f = v.finding %}
+      <tr>
+        <td class="nowrap"><span class="score">{{ v.risk.score }}</span> {{ m.rating_tag(v.risk.rating) }}</td>
+        <td><a href="/findings/{{ f.id }}"><span class="cond">{{ f.id }}</span> {{ f.title }}</a>
+          {% if f.known_exploited %}<span class="tag bad">exploited</span>{% endif %}
+          <br><span class="xs muted">{{ f.cwe or "no CWE" }}, {{ f.source | lower }}, controls {{ f.control_ids | join(", ") }}</span></td>
+        <td class="muted">{{ v.asset.name }}</td>
+        <td class="right num">{{ "%.1f" | format(f.cvss) }}</td>
+        <td>{{ m.status_tag(f.status) }}</td>
+        <td class="muted small">{{ f.owner or "unassigned" }}</td>
+        <td class="nowrap small">{% if v.overdue %}<span class="tag bad">{{ f.due | date }} overdue</span>{% else %}<span class="muted">{{ f.due | date }}</span>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="center muted">No findings match these filters.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in | SecureScope</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<main class="login">
+  <div class="panel">
+    <header><h1 class="display">SecureScope</h1><span class="xs muted">Security posture demo</span></header>
+    <div class="body stack">
+      {% if request.query_params.get("reset") %}<p class="notice" role="status">Demo data was reset. Sign in again.</p>{% endif %}
+      {% if error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+      <form method="post" action="/login" class="stack">
+        <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+        <input type="hidden" name="next" value="{{ next }}">
+        <div><label class="field" for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" required value="{{ email }}"></div>
+        <div><label class="field" for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required></div>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+      {% if demo_mode %}
+      <div class="stack">
+        <p class="small muted">Or explore with a demo account. Each role sees and can change different things.</p>
+        <form method="post" action="/demo-login" class="row">
+          <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+          <button class="btn small" name="role" value="viewer" type="submit">Viewer (read only)</button>
+          <button class="btn small" name="role" value="analyst" type="submit">Analyst</button>
+          <button class="btn small" name="role" value="admin" type="submit">Admin</button>
+        </form>
+      </div>
+      {% endif %}
+      <p class="xs muted">All data is synthetic and describes a fictional company.</p>
+    </div>
+  </div>
+</main>
+</body>
+</html>

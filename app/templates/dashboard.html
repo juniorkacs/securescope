@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="display">Security posture</h1>
+  <p>Every number on this page is calculated from the current findings and control assessments. Risk scores follow the <a href="/methodology">documented scoring rules</a>.</p>
+</div>
+
+<div class="kpis">
+  <div class="kpi">
+    <p class="small muted">Open findings</p>
+    <p class="value">{{ s.open_total }}</p>
+    <p class="xs muted">{{ s.open_by_rating[ratings[0]] }} critical, {{ s.open_by_rating[ratings[1]] }} high</p>
+  </div>
+  <div class="kpi">
+    <p class="small muted">Past remediation due date</p>
+    <p class="value">{{ s.overdue | length }}</p>
+    <p class="xs muted"><a href="/findings?overdue=true">See overdue findings</a></p>
+  </div>
+  <div class="kpi">
+    <p class="small muted">Known-exploited weaknesses open</p>
+    <p class="value">{{ s.known_exploited_open }}</p>
+    <p class="xs muted">Weighted +15 in risk scores</p>
+  </div>
+  <div class="kpi">
+    <p class="small muted">Controls verified</p>
+    <p class="value">{{ s.verified_pct }}<small>%</small></p>
+    <p class="xs muted">Satisfied assessment in the last 365 days</p>
+  </div>
+</div>
+
+<div class="grid-main mt">
+  <section class="panel">
+    <header><h2>Highest-risk open findings</h2><a class="small" href="/findings">All findings</a></header>
+    <div class="body">
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Table (scrolls sideways on small screens)">
+        <table>
+          <caption class="sr-only">Ten highest-risk open findings</caption>
+          <thead><tr><th scope="col">Risk</th><th scope="col">Finding</th><th scope="col">Asset</th><th scope="col">Due</th></tr></thead>
+          <tbody>
+          {% for v in s.top_risks %}
+            <tr>
+              <td class="nowrap"><span class="score">{{ v.risk.score }}</span> {{ m.rating_tag(v.risk.rating) }}</td>
+              <td><a href="/findings/{{ v.finding.id }}">{{ v.finding.title }}</a>{% if v.finding.known_exploited %} <span class="tag bad">exploited</span>{% endif %}</td>
+              <td class="muted">{{ v.asset.name }}</td>
+              <td class="nowrap {{ 'tag bad' if v.overdue else 'muted' }}">{{ v.finding.due | date }}{% if v.overdue %} overdue{% endif %}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="muted center">No open findings.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div class="stack">
+    <section class="panel">
+      <header><h2>Open findings by rating</h2></header>
+      <div class="body">
+        {{ m.stacked_bar([(s.open_by_rating[ratings[0]], "--critical"), (s.open_by_rating[ratings[1]], "--high"), (s.open_by_rating[ratings[2]], "--medium"), (s.open_by_rating[ratings[3]], "--low")], "Open findings by rating") }}
+        <ul class="legend">
+          {% for r in ratings %}
+          <li><span><span class="swatch sw-{{ r.value }}"></span><a href="/findings?rating={{ r.value }}">{{ r.value | capitalize }}</a></span><span class="num">{{ s.open_by_rating[r] }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header><h2>Control verification</h2><a class="small" href="/controls">All controls</a></header>
+      <div class="body">
+        {% set cv = s.controls_by_verification %}
+        {% set keys = cv.keys() | list %}
+        {{ m.stacked_bar([(cv[keys[0]], "--ok"), (cv[keys[1]], "--info"), (cv[keys[2]], "--medium"), (cv[keys[3]], "--critical"), (cv[keys[4]], "--high"), (cv[keys[5]], "--line-strong")], "Controls by verification state") }}
+        {% set sw = ["verified", "unverified", "expired", "deficient", "notimpl", "na"] %}
+        <ul class="legend">
+          {% for k in keys %}
+          <li><span><span class="swatch sw-{{ sw[loop.index0] }}"></span><a href="/controls?state={{ k.value | urlencode }}">{{ k.value | capitalize }}</a></span><span class="num">{{ cv[k] }}</span></li>
+          {% endfor %}
+        </ul>
+        {% if s.conflicts %}
+        <p class="notice mt-s">Assessed as satisfied, but open high or critical findings point at:
+          {% for c in s.conflicts %}<a href="/controls/{{ c.control_id }}">{{ c.control_id }}</a>{{ ", " if not loop.last }}{% endfor %}.
+          The assessment may be out of date.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <header><h2>Open risk by asset</h2></header>
+      <div class="body">
+        <ul class="asset-bars">
+          {% for a, n, pts in s.risk_by_asset[:8] %}
+          <li>
+            <div class="label"><a href="/findings?asset={{ a.id }}">{{ a.name }}</a><span class="muted num">{{ n }} open, {{ pts }} pts</span></div>
+            <svg class="bar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect width="100" height="10" fill="var(--sunken)"></rect><rect width="{{ 100 * pts / max_asset }}" height="10" fill="var(--accent)"></rect></svg>
+          </li>
+          {% endfor %}
+        </ul>
+        <p class="xs muted mt-s">Total risk points of open findings on each asset. Shows where remediation effort goes furthest.</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header><h2>Remediation</h2></header>
+      <div class="body">
+        <dl class="legend">
+          <div><dt class="muted">Closed in last 90 days</dt><dd class="num">{{ s.closed_last_90 }}</dd></div>
+          <div><dt class="muted">Median days to remediate</dt><dd class="num">{{ s.median_days_to_remediate if s.median_days_to_remediate is not none else "n/a" }}</dd></div>
+          {% for st, n in s.status_counts.items() %}
+          <div><dt class="muted">{{ st.value | capitalize }}</dt><dd class="num">{{ n }}</dd></div>
+          {% endfor %}
+        </dl>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Controls{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="display">Control assessments</h1>
+  <p>Selected NIST SP 800-53 Rev. 5 controls. What the organisation says it has implemented is kept separate from what an assessment has shown. Only a satisfied assessment from the last 365 days counts as verified.</p>
+</div>
+
+<nav aria-label="Filter by verification state" class="row mb">
+  <a class="btn small {% if not state %}primary{% endif %}" href="/controls">All ({{ counts.values() | sum }})</a>
+  {% for k, n in counts.items() %}
+  <a class="btn small {% if state == k.value %}primary{% endif %}" href="/controls?state={{ k.value | urlencode }}">{{ k.value | capitalize }} ({{ n }})</a>
+  {% endfor %}
+</nav>
+
+<div class="table-wrap" tabindex="0" role="region" aria-label="Table (scrolls sideways on small screens)">
+  <table>
+    <caption class="sr-only">Controls</caption>
+    <thead><tr>
+      <th scope="col">Control</th><th scope="col">Family</th><th scope="col">Implementation (claimed)</th>
+      <th scope="col">Assessment (shown)</th><th scope="col">Verification</th><th scope="col" class="right">Open findings</th>
+    </tr></thead>
+    <tbody>
+    {% for c in views %}
+      <tr>
+        <td><a href="/controls/{{ c.control_id }}"><span class="cond">{{ c.control_id }}</span> {{ c.title }}</a></td>
+        <td class="muted small">{{ c.family }}</td>
+        <td class="small">{{ c.assessment.implementation.value if c.assessment else "not recorded" }}</td>
+        <td class="small">{% if c.assessment and c.assessment.assessed_on %}{{ c.assessment.result.value }}<br><span class="xs muted">{{ c.assessment.assessed_on | date }}</span>{% else %}<span class="muted">not assessed</span>{% endif %}</td>
+        <td>{{ m.verification_tag(c.state.verification) }}{% if c.conflict %}<br><span class="tag bad mt-s">contradicted by findings</span>{% endif %}</td>
+        <td class="right num">{% if c.open_findings %}<a href="/controls/{{ c.control_id }}#findings">{{ c.open_findings | length }}</a>{% else %}<span class="muted">0</span>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="center muted">No controls are in this state.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="xs muted mt-s">Control titles from NIST SP 800-53 Rev. 5. This register is a demonstration and does not establish compliance.</p>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Scoring and mapping{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="display">Scoring and mapping</h1>
+  <p>How SecureScope ranks findings and how its registers relate to RMF and STIGs. The numbers on this page are read from the same code that calculates the scores.</p>
+</div>
+
+<div class="grid-2">
+  <section class="panel">
+    <header><h2>Risk score (0 to 100)</h2></header>
+    <div class="body stack">
+      <p class="small">Add up the points below, then cap the total at 100. The formula is additive on purpose, so anyone can recompute a score by hand.</p>
+      <div class="table-wrap fit">
+        <table>
+          <caption class="sr-only">Risk score factors</caption>
+          <thead><tr><th scope="col">Factor</th><th scope="col" class="right">Points</th></tr></thead>
+          <tbody>
+            <tr><td>CVSS base score x {{ sc.CVSS_WEIGHT | int }}</td><td class="right num">0 to {{ (10 * sc.CVSS_WEIGHT) | int }}</td></tr>
+            <tr><td>Asset criticality (1 to 5) x {{ sc.CRITICALITY_POINTS }}</td><td class="right num">{{ sc.CRITICALITY_POINTS }} to {{ 5 * sc.CRITICALITY_POINTS }}</td></tr>
+            <tr><td>Asset is internet-facing</td><td class="right num">+{{ sc.INTERNET_FACING_POINTS }}</td></tr>
+            <tr><td>Weakness is known to be exploited</td><td class="right num">+{{ sc.KNOWN_EXPLOITED_POINTS }}</td></tr>
+            {% for dc, pts in sc.DATA_CLASS_POINTS.items() %}
+            <tr><td>Data classification: {{ dc.value }}</td><td class="right num">+{{ pts }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <header><h2>Ratings and remediation targets</h2></header>
+    <div class="body stack">
+      <div class="table-wrap fit">
+        <table>
+          <caption class="sr-only">Rating bands</caption>
+          <thead><tr><th scope="col">Rating</th><th scope="col">Score</th><th scope="col" class="right">Fix within</th></tr></thead>
+          <tbody>
+          {% for threshold, rating in sc.RATING_THRESHOLDS %}
+            <tr><td><span class="tag {{ rating.value }}">{{ rating.value }}</span></td><td class="num">{{ threshold }} or more</td><td class="right num">{{ sc.REMEDIATION_SLA_DAYS[rating] }} days</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">The due date is the discovery date plus the target. An open finding past its due date is overdue. Analysts can override a due date, and the change is recorded in the finding's history.</p>
+      <p class="notice">This score ranks work. It doesn't measure real-world likelihood or business impact, and it uses CVSS base scores without temporal or environmental adjustment.</p>
+    </div>
+  </section>
+</div>
+
+<section class="panel mt">
+  <header><h2>Where this fits in the Risk Management Framework</h2></header>
+  <div class="body">
+    <p class="small muted mb">RMF steps from NIST SP 800-37 Rev. 2, and the part of SecureScope that supports each one.</p>
+    <div class="table-wrap fit">
+      <table>
+        <caption class="sr-only">RMF steps</caption>
+        <thead><tr><th scope="col">Step</th><th scope="col">Purpose</th><th scope="col">In SecureScope</th></tr></thead>
+        <tbody>
+        {% for step, purpose, here in rmf %}
+          <tr><td class="cond">{{ loop.index }}. {{ step }}</td><td class="small">{{ purpose }}</td><td class="small {{ 'muted' if here.startswith('Not') }}">{{ here }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="panel mt">
+  <header><h2>STIG severity categories (illustrative)</h2></header>
+  <div class="body stack">
+    <p class="small">DISA Security Technical Implementation Guides rate each check as CAT I, II or III. Each STIG rule references Control Correlation Identifiers (CCIs), which map back to SP 800-53 controls. That chain is how a failed configuration check becomes evidence against a control. SecureScope models the last link: each finding names the controls it is evidence against.</p>
+    <div class="table-wrap fit">
+      <table>
+        <caption class="sr-only">STIG categories</caption>
+        <thead><tr><th scope="col">Category</th><th scope="col">Meaning (paraphrased)</th><th scope="col">Rough SecureScope equivalent</th></tr></thead>
+        <tbody>
+        {% for cat, meaning, here in stig %}
+          <tr><td class="cond">{{ cat }}</td><td class="small">{{ meaning }}</td><td class="small muted">{{ here }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="notice">This is an illustrative alignment, not an official crosswalk. SecureScope doesn't import STIG checklists or CCI lists, and the correspondence between categories and ratings depends on context.</p>
+  </div>
+</section>
+
+<section class="panel mt">
+  <header><h2>Control verification states</h2></header>
+  <div class="body">
+    <ul class="asset-bars small">
+      <li><strong>Verified:</strong> assessed as satisfied within the last {{ valid_days }} days.</li>
+      <li><strong>Implemented, not verified:</strong> reported as implemented or partial, with no assessment yet.</li>
+      <li><strong>Assessment expired:</strong> the last satisfied assessment is more than {{ valid_days }} days old.</li>
+      <li><strong>Deficient:</strong> assessed and found other than satisfied.</li>
+      <li><strong>Not implemented:</strong> planned or not implemented.</li>
+      <li><strong>Contradicted by findings:</strong> verified, but open high or critical findings reference the control.</li>
+    </ul>
+  </div>
+</section>
+{% endblock %}
